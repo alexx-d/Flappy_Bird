@@ -4,7 +4,9 @@ using UnityEngine;
 public class Game : MonoBehaviour
 {
     [SerializeField] private Bird _bird;
-    [SerializeField] private PipeGenerator _pipeGenerator;
+    [SerializeField] private ObjectPool<Bullet> _playerBulletPool;
+    [SerializeField] private EnemyGenerator _enemyGenerator;
+    [SerializeField] private ScoreCounter _scoreCounter;
     [SerializeField] private StartScreen _startScreen;
     [SerializeField] private EndGameScreen _endGameScreen;
 
@@ -13,6 +15,8 @@ public class Game : MonoBehaviour
         _startScreen.PlayButtonClicked += OnPlayButtonClick;
         _endGameScreen.RestartButtonClicked += OnRestartButtonClick;
         _bird.GameOver += OnGameOver;
+
+        _enemyGenerator.EnemyKilled += _scoreCounter.Add;
     }
 
     private void OnDisable()
@@ -20,17 +24,26 @@ public class Game : MonoBehaviour
         _startScreen.PlayButtonClicked -= OnPlayButtonClick;
         _endGameScreen.RestartButtonClicked -= OnRestartButtonClick;
         _bird.GameOver -= OnGameOver;
+
+        _enemyGenerator.EnemyKilled -= _scoreCounter.Add;
     }
 
     private void Start()
     {
         Time.timeScale = 0;
+        _endGameScreen.Close();
         _startScreen.Open();
+
+        _bird.Init(_playerBulletPool);
     }
 
     private void OnGameOver()
     {
         Time.timeScale = 0;
+
+        _enemyGenerator.Reset();
+        _playerBulletPool.Reset();
+
         _endGameScreen.Open();
     }
 
@@ -48,6 +61,9 @@ public class Game : MonoBehaviour
     private void StartGame()
     {
         Time.timeScale = 1;
+
+        _enemyGenerator.Reset();
         _bird.Reset();
+        _enemyGenerator.StartSpawn();
     }
 }

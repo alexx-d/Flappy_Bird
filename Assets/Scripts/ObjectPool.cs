@@ -1,41 +1,53 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ObjectPool : MonoBehaviour
+public class ObjectPool<T> : MonoBehaviour where T : MonoBehaviour
 {
+    [SerializeField] private T _prefab;
     [SerializeField] private Transform _container;
-    [SerializeField] private Pipe _prefab;
+    [SerializeField] private int _prewarmCount = 10;
 
-    private Queue<Pipe> _pool;
-
-    public IEnumerable<Pipe> PooledObjects => _pool;
+    private Queue<T> _pool = new Queue<T>();
+    private List<T> _activeObjects = new List<T>();
 
     private void Awake()
     {
-        _pool = new Queue<Pipe>();
-    }
-
-    public Pipe GetObject()
-    {
-        if (_pool.Count == 0)
+        for (int i = 0; i < _prewarmCount; i++)
         {
-            var pipe = Instantiate(_prefab);
-            pipe.transform.parent = _container;
-
-            return pipe;
+            CreateNewObject();
         }
-
-        return _pool.Dequeue();
     }
 
-    public void PutObject(Pipe pipe)
+    private T CreateNewObject()
     {
-        _pool.Enqueue(pipe);
-        pipe.gameObject.SetActive(false);
+        T obj = Instantiate(_prefab, _container);
+        obj.gameObject.SetActive(false);
+        _pool.Enqueue(obj);
+        return obj;
+    }
+
+    public T GetObject()
+    {
+        T obj = _pool.Count > 0 ? _pool.Dequeue() : CreateNewObject();
+        _activeObjects.Add(obj);
+        return obj;
+    }
+
+    public void PutObject(T obj)
+    {
+        obj.gameObject.SetActive(false);
+        _activeObjects.Remove(obj);
+        _pool.Enqueue(obj);
     }
 
     public void Reset()
     {
-        _pool.Clear();
+        for (int i = _activeObjects.Count - 1; i >= 0; i--)
+        {
+            T obj = _activeObjects[i];
+            obj.gameObject.SetActive(false);
+            _pool.Enqueue(obj);
+        }
+        _activeObjects.Clear();
     }
 }
